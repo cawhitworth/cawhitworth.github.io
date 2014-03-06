@@ -31,46 +31,51 @@ was sufficient). The code for this is below as it took a while to get right.
 
 *and the attached property:*
 
-    class FlowDocumentBindingAssistant : DependencyObject
+{% highlight csharp %}
+class FlowDocumentBindingAssistant : DependencyObject
+{
+    public static readonly DependencyProperty BoundDocument =
+        DependencyProperty.RegisterAttached("BoundDocument",
+        typeof(Block),
+        typeof(FlowDocumentBindingAssistant),
+        new FrameworkPropertyMetadata(DocumentChangedCallback));
+
+    private static void DocumentChangedCallback(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs dependencyPropertyChangedEventArgs)
     {
-        public static readonly DependencyProperty BoundDocument =
-            DependencyProperty.RegisterAttached("BoundDocument",
-            typeof(Block),
-            typeof(FlowDocumentBindingAssistant),
-            new FrameworkPropertyMetadata(DocumentChangedCallback));
+        var doc = dependencyObject as FlowDocument;
+        if (doc == null)
+            return;
 
-        private static void DocumentChangedCallback(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs dependencyPropertyChangedEventArgs)
-        {
-            var doc = dependencyObject as FlowDocument;
-            if (doc == null)
-                return;
+        var section = GetBoundDocument(doc);
 
-            var section = GetBoundDocument(doc);
-
-            doc.Blocks.Clear();
-            if (section != null)
-                box.Blocks.Add(section);
-        }
-
-        public static Block GetBoundDocument(DependencyObject d)
-        {
-            return d.GetValue(BoundDocument) as Block;
-        }
-
-        public static void SetBoundDocument(DependencyObject d, Block value)
-        {
-            d.SetValue(BoundDocument, value);
-        }
+        doc.Blocks.Clear();
+        if (section != null)
+            box.Blocks.Add(section);
     }
+
+    public static Block GetBoundDocument(DependencyObject d)
+    {
+        return d.GetValue(BoundDocument) as Block;
+    }
+
+    public static void SetBoundDocument(DependencyObject d, Block value)
+    {
+        d.SetValue(BoundDocument, value);
+    }
+}
+{% endhighlight %}
+
 
 So, bound to this we have a `Block` (actually a `Paragraph`) with a bunch of
 `Run`s in of either plain or highlighted text, something like:
 
-    <Paragraph>
-        <Run xml:preserve="space">This is some </Run>
-        <Run xml:preserve="space" Background="Yellow">highlighted</Run>
-        <Run xml:preserve="space"> text.</Run>
-    </Paragraph>
+{% highlight xml %}
+<Paragraph>
+    <Run xml:preserve="space">This is some </Run>
+    <Run xml:preserve="space" Background="Yellow">highlighted</Run>
+    <Run xml:preserve="space"> text.</Run>
+</Paragraph>
+{% endhighlight %}
 
 (the `xml:preserve="space"` is there because at the moment I generate the
 XAML for the document then parse it using a `XamlReader` and I care about
@@ -85,13 +90,15 @@ Theoretically, this should be straightforward:
 
 In the code that sets the `Block` on the ViewModel, I could have:
 
-    Paragraph paragraph = BuildHighlightedParagraphFromText(myText);
-    ViewModel.Document = paragraph;
-    var firstHighlightedRun = paragraph.Inlines.First(run => run.Background != null); // A little crude, but it works
-    if (firstHighlightedRun != null)
-    {
-        firstHighlightedRun.BringIntoView();
-    }
+{% highlight csharp %}
+Paragraph paragraph = BuildHighlightedParagraphFromText(myText);
+ViewModel.Document = paragraph;
+var firstHighlightedRun = paragraph.Inlines.First(run => run.Background != null); // A little crude, but it works
+if (firstHighlightedRun != null)
+{
+    firstHighlightedRun.BringIntoView();
+}
+{% endhighlight %}
 
 Unfortunately, this doesn't work. I'm yet to find out exactly why, but googling
 a bit around the problem seemed to suggest a bunch of other people were having
@@ -122,22 +129,26 @@ So, we're going to need another attached property - this time, on the
 `FlowDocumentScrollViewer` itself - and we can bind to a suitable value in our
 ViewModel:
 
-    <FlowDocumentScrollViewer wpfControls:FlowDocumentBindingAssistant.ScrollPosition="{Binding ScrollPosition}">
-        ....
-    </FlowDocument>
+{% highlight xml %}
+<FlowDocumentScrollViewer wpfControls:FlowDocumentBindingAssistant.ScrollPosition="{Binding ScrollPosition}">
+    ....
+</FlowDocument>
+{% endhighlight %}
 
 The C# code itself is fairly straightforward, we'll want to an attached property
 as above, and on the `ScrollPositionChanged` callback, something like:
 
-    private static void ScrollPositionChangedCallback(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        var fdScrollViewer = d as FlowDocumentScrollViewer;
-        var top = GetScrollPosition(fdScrollViewer);
+{% highlight csharp %}
+private static void ScrollPositionChangedCallback(DependencyObject d, DependencyPropertyChangedEventArgs e)
+{
+    var fdScrollViewer = d as FlowDocumentScrollViewer;
+    var top = GetScrollPosition(fdScrollViewer);
 
-        var scrollViewer = GetChild<ScrollViewer>(fdScrollViewer);
+    var scrollViewer = GetChild<ScrollViewer>(fdScrollViewer);
 
-        scrollViewer.ScrollToVerticalOffset(top);
-    }
+    scrollViewer.ScrollToVerticalOffset(top);
+}
+{% endhighlight %}
 
 The `GetChild<T>()` method just uses the `VisualTreeHelper` to recursively walk
 through a `DependencyObject`'s children and find the first one that is of
@@ -145,12 +156,14 @@ the relevant type.
 
 And so, in our calling code, we can now do:
 
-    var run = paragraph.Inlines.First(run => run.Background != null);
-    if (run != null)
-    {
-        var top = run.ContentStart.GetCharacterRect(LogicalDirection.Forward).Top;
-        ViewModel.ScrollPosition = top;
-    }
+{% highlight csharp %}
+var run = paragraph.Inlines.First(run => run.Background != null);
+if (run != null)
+{
+    var top = run.ContentStart.GetCharacterRect(LogicalDirection.Forward).Top;
+    ViewModel.ScrollPosition = top;
+}
+{% endhighlight %}
 
 This will position the highlighted `Run` directly at the top of the view; it
 might be nicer to push it down a little way to give the user some context - but
