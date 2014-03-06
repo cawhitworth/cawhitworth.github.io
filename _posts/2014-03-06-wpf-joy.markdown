@@ -85,8 +85,8 @@ In the code that sets the `Block` on the ViewModel, I could have:
 
     Paragraph paragraph = BuildHighlightedParagraphFromText(myText);
     ViewModel.Document = paragraph;
-    var firstHiglightedRun = paragraph.Inlines.First(run => run.Background != null); // A little crude, but it works
-    if (firstHiglightedRun != null)
+    var firstHighlightedRun = paragraph.Inlines.First(run => run.Background != null); // A little crude, but it works
+    if (firstHighlightedRun != null)
     {
         firstHighlightedRun.BringIntoView();
     }
