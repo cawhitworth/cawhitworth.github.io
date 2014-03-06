@@ -1,4 +1,9 @@
-# FlowDocumentScrollViewers, BringIntoView and why we can never have nice things
+---
+layout: post
+title: FlowDocumentScrollViewers, BringIntoView and why we can never have nice things
+---
+
+## Context
 
 So, I'm working on rebuilding the UI of one of our products in WPF for 
 down-tools week at work. It's as much an exercise in learning WPF as anything
@@ -9,6 +14,8 @@ bindings and nothing else.
 Part of the UI is a code view with parts of the code highlighted according to
 a search term. This is implemented as a `FlowDocument`, contained in a
 `FlowDocumentScrollViewer`.
+
+### Dynamic content in a `FlowDocument`
 
 The content is dynamically generated, and bound using an attached property on
 the `FlowDocument`. We have a ViewModel for the `UserControl` hosting the
@@ -67,6 +74,8 @@ So, bound to this we have a `Block` (actually a `Paragraph`) with a bunch of
 XAML for the document then parse it using a `XamlReader` and I care about
 preserving the spaces)
 
+### Jumping in
+
 So, anyway. This works nicely and I have a nicely highlighted document whose
 contents I can change at run-time by updating my ViewModel. The problem comes
 because I also want to scroll to the position of the first highlighted `Run`.
@@ -87,6 +96,8 @@ a bit around the problem seemed to suggest a bunch of other people were having
 the same problem - for some people, `BringIntoView()` worked, but for others
 (like me), it just plain did nothing. I've spent the last day beating my head
 against this, and I think I've got an acceptable solution.
+
+### Doing things the hard(er way than should be strictly necessary)
 
 For more-or-less anything in a `FlowDocument`, we can access a `ContentStart`
 property, which hands us a `TextPointer` object describing the start position
