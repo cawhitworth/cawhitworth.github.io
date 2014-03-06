@@ -6,10 +6,10 @@ title: FlowDocumentScrollViewers, BringIntoView and why we can never have nice t
 ## Context
 
 So, I'm working on rebuilding the UI of one of our products in WPF for 
-down-tools week at work. It's as much an exercise in learning WPF as anything
-else. Particularly, I'm trying to observe reasonably strict MVVM - no
-codebehinds, everything in the UI that interacts with code does so through
-bindings and nothing else.
+down-tools week at work. It's as much an exercise in doing a big chunk of work
+in WPF as anything else. Particularly, I'm trying to observe reasonably strict
+MVVM - no codebehinds, everything in the UI that interacts with code does so
+through bindings and nothing else.
 
 Part of the UI is a code view with parts of the code highlighted according to
 a search term. This is implemented as a `FlowDocument`, contained in a
