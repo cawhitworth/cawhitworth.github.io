@@ -27,7 +27,7 @@ was sufficient). The code for this is below as it took a while to get right.
 
 {% highlight xml %}
 <FlowDocument wpfControls:FlowDocumentBindingAssistant.BoundDocument="{Binding Document}" />
-{% endhightlight %}
+{% endhighlight %}
 
 *and the attached property:*
 
