@@ -1,4 +1,9 @@
-# Things I used during Noisevember
+---
+layout: post
+title: Things I used during #Noisevember
+---
+
+# Things I used during #Noisevember
 
 There's a lot here. I'm horribly spoiled, I know. Not all of this got used on
 everything, clearly, but there were definitely bits and pieces I kept coming
