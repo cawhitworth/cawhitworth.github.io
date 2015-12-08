@@ -10,30 +10,28 @@ title: cawhitworth.github.io
     <meta http-equiv="X-UA-Compatible" content="chrome=1" />
     <meta name="description" content="cawhitworth.github.io : {{ page.title }}" />
 
-    <link rel="stylesheet" type="text/css" media="screen" href="/stylesheets/styles.css">
+    <link rel="stylesheet" type="text/css" href="/stylesheets/styles.css">
+    <link rel="stylesheet" type="text/css" href="/stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width">
 
     <title>cawhitworth.github.io | {{ page.title }}</title>
   </head>
 
   <body>
 
+    <div class="wrapper">
     <!-- HEADER -->
-    <div id="header_wrap" class="outer">
-        <header class="inner">
-          <a id="forkme_banner" href="https://github.com/cawhitworth">View on GitHub</a>
-          <h1 id="project_title"><a href="/">cawhitworth.github.io</a></h1>
-        </header>
-    </div>
+      <header>
+        <a id="forkme_banner" href="https://github.com/cawhitworth">View on GitHub</a>
+        <h1><a href="/">cawhitworth.github.io</a></h1>
+      </header>
 
     <!-- MAIN CONTENT -->
-    <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
       {{ content }}
       </section>
-    </div>
 
     <!-- FOOTER  -->
-    <div id="footer_wrap" class="outer">
       <footer class="inner">
         <p>
           Built with <a href="http://jekyllrb.com">Jekyll</a><br />
@@ -41,6 +39,6 @@ title: cawhitworth.github.io
         </p>
       </footer>
     </div>
-
+    <script src="/js/scale.fix.js"></script>
   </body>
 </html>
