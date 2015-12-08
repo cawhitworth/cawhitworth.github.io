@@ -152,7 +152,7 @@ cross-platform, but:
  Avante series, the internet tells me. Solid wood body, two pickups, split-coil
  neck, soapbar bridge. I like this bass.
 
- * Yamaha electric piano I "borrowed" about 15 years ago and, uh, still have.
+ * Fairly old Yamaha electric piano
 
  * Novation MiniNova - a frustrating little thing. It's got this amazing synth
  engine and it sounds huge, but it's impossible to program and the two-octave
