@@ -72,3 +72,6 @@ a.Field = "Hello";
 bool hasKey = ((IDictionary<string, object>) a).Any(kvp => kvp.Key == "Field"); // True
 {% endhighlight %)
 
+However, this requires you to use an `ExpandoObject`, which is sealed: you
+can't extend it to provide your own concrete functionality and then attach
+arbitrary runtime data to it.
