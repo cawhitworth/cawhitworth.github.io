@@ -66,11 +66,11 @@ like XML or JSON. WPF requires something similar for attached properties.
 One way of doing this is to use the support for dynamic objects in .NET 4+, as
 below:
 
-{% highlight csharp %)
+{% highlight csharp %}
 dynamic a = new ExpandoObject();
 a.Field = "Hello";
 bool hasKey = ((IDictionary<string, object>) a).Any(kvp => kvp.Key == "Field"); // True
-{% endhighlight %)
+{% endhighlight %}
 
 However, this requires you to use an `ExpandoObject`, which is sealed: you
 can't extend it to provide your own concrete functionality and then attach
