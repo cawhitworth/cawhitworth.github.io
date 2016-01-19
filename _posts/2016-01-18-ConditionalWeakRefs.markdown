@@ -139,16 +139,98 @@ is where `ConditionalWeakTable` comes in.
 
 `ConditionalWeakTable<TKey, TValue>` solves the problem of `Dictionary`
 highlighted above by _not_ holding a reference to the `TKey` objects; rather,
-it holds a table of key-value pairs _without_ holding a reference to the key
-objects. It also creates a strong reference from the key to the value so when
-the key is garbage-collected, the value may be as well (assuming the value has
-no other references holding it in memory).
+it holds a table of special key-value pairs. These key-value pairs, called
+`DependentHandle`s internally, hold a strong reference from the key to the
+value, but do _not_ hold a strong reference to the key - the key is not kept
+alive by the `ConditionalWeakTable`, unlike a `Dictionary`.
 
+The upshot of this is that the value is only held alive by they key, and when
+the key is garbage collected, the value is too (assuming nothing else holds a
+reference to it). So, given the following class definitions:
 
+{% highlight csharp %}
 
- rather,
-it makes use of an internal CLR implementation of an
-[_ephemeron_](https://en.wikipedia.org/wiki/Ephemeron) - a structure specifically
-designed to solve this problem; in the .NET CLR, these are called
-`DependentHandle`s. 
+class MyClass
+{
+    ~MyClass() { Console.WriteLine("{0} finalized", GetType()); }
+}
+
+class MyClass2 : MyClass { }
+
+{% endhighlight %}
+
+and the following setup code:
+
+{% highlight csharp %}
+
+var conditionalWeakTable = new ConditionalWeakTable<MyClass, MyClass2>();
+
+var first = new MyClass();
+var second = new MyClass2();
+
+conditionalWeakTable.Add(first, second);
+
+{% endhighlight %}
+
+If we set `second` to null and do a `GC.Collect()`, the ConditionalWeakTable
+will keep the `MyClass2` instance alive, as we'd expect from a normal
+dictionary:
+
+{% highlight csharp %}
+// Will print nothing to the console - the MyClass2 instance is still
+// held alive through the ConditionalWeakTable
+second = null; GC.Collect(); Console.ReadLine();
+{% endhighlight %}
+
+However, if we now set `first` to null and then `GC.Collect()`, this will mean
+that the MyClass2 instance is no longer being held alive, we will see both the
+`MyClass2` and the `MyClass` instance collected and finalized:
+
+{% highlight csharp %}
+// Will print:
+// MyClass2 Finalized
+// MyClass Finalized
+first = null; GC.Collect(); Console.ReadLine();
+{% endhighlight %}
+
+You might be wondering how this is done - surely if the ConditionalWeakTable
+somehow 'knows about' the keys and values, it must have a reference to them?
+The answer is that it cheats - the internal `DependentHandle` class is an
+implementation of a structure known as an
+[_ephemeron_](https://en.wikipedia.org/wiki/Ephemeron) - a structure designed
+to solve exactly this problem in garbage-collected systems. It is implemented
+at the CLR level to allow precisely this kind of behaviour, which would
+otherwise be impossible - the [source code](http://referencesource.microsoft.com/#mscorlib/system/runtime/compilerservices/ConditionalWeakTable.cs)
+for `ConditionalWeakTable` and `DependentHandle` are available if you'd like
+to dig into this further.
+
+## Implications for profiling
+
+Because these `ConditionalWeakTable`s depend on support from the CLR, they
+also require special-case support from profiling tools. Without this support,
+objects kept alive only through `ConditionalWeakTable`s would show as having
+no path to the Garbage Collection root - for the example above, after `second`
+has been set to null, we would see the following in instance retention graph
+in ANTS Memory Profiler:
+
+![No GC root for MyClass2]({{ site.url }}/assets/no_gc_root.png)
+
+This is obviously not true - but the normal reference data we get back from
+the .NET profiling interfaces don't include data from `ConditionalWeakTable`s.
+Fortunately, Microsoft have provided a profiling interface ([`ICorProfilerCallback5`](https://msdn.microsoft.com/en-us/library/jj160349(v=vs.110).aspx))
+to allow us to discover references held through `ConditionalWeakTable`s, and
+so as of the latest version of ANTS Memory Profiler, this data is combined with
+the normal reference data, and so what we see is:
+
+![ConditionalWeakTable reference shown by dashed light-blue arrow]({{ site.url }}/assets/with_conditional_weak_ref.png)
+
+The dashed light-blue arrow from `MyClass` to `MyClass2` indicates that this
+reference is held in a `ConditionalWeakTable` rather than being a 'normal'
+strong reference.
+
+# Conclusion
+
+I guess I should put something here?
+
+You can download a trial of ANTS Memory Profiler from the [RedGate website](http://www.red-gate.com/products/dotnet-development/ants-memory-profiler/).
 
