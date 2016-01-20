@@ -4,24 +4,29 @@ draft: true
 title: ConditionalWeakTable and dynamic properties in .NET 4+
 ---
 
-In version 4.0 of the .NET Framework, Microsoft added a new class to the 
+In version 4.0 of the .NET Framework, Microsoft added a new class to the
 `System.Runtime.CompilerServices` namespace: `ConditionalWeakTable<TKey,
-TValue>`.  On the surface, this looks like a straightforward dictionary-style
-class - it allows you to look up instances of `TValue` by instances of `TKey`.
-But we've already got `Dictionary<TKey, TValue>`, so what's special about this
-new type?
+TValue>`. On the surface, this looks like a straightforward dictionary class -
+it allows you to look up instances of `TValue` by instances of `TKey`.  But
+we've already got `Dictionary<TKey, TValue>`, so what's special about this new
+type?
 
 ## Static and Dynamic languages
 
 Before we answer that, it's worth taking a brief detour into static vs dynamic
-languages. In a language like C#, when you define a class, its properties and
-fields (and methods, excepting extension methods) are all fixed at compile-time;
-accessing a field or property that does not exist on an object is a compile
-error.
+languages. In a static language like C#, when you define a class, its
+properties and fields (and methods, excepting extension methods) are all fixed
+at compile-time; accessing a field or property that does not exist on an object
+is a compile error.
+
+(aside: I'm aware that if you gather `n` developers in a room, there will be
+`n+1` opinions about what constitutes a 'static' versus a 'dynamic' lanaguage;
+I'm using the words 'static' and 'dynamic' as a convenience here, not arguing
+for a definitive interpretation)
 
 However, in a language like Python or Ruby, objects are dynamic at runtime –
-that is, classes are not fixed at compile-time, and can have members added and
-removed at runtime. Below is an example in Python:
+that is, classes are not fixed at compile-time, and objects can have members
+added and removed at runtime. Below is an example in Python:
 
 {% highlight python %}
 # Declare an empty class and construct one
@@ -54,7 +59,7 @@ myInstance.__dict__['value'] = 20
 print(myInstance.value)             # 20
 {% endhighlight %}
 
-There are a number of situations where it might useful to have this kind of
+There are a number of situations where it might be useful to have this kind of
 behaviour - the ability to add properties to objects at runtime. For example,
 when building dynamic data structures from a self-describing data format like
 XML or JSON. Or, when building support for a language like Python or Ruby on
@@ -63,8 +68,10 @@ very similar in order that they can be attached to an arbitrary object.
 
 ## Dynamic behaviour in .NET
 
-One way of doing this is to use the support for dynamic objects in .NET 4+, as
-below:
+.NET added support for `dynamic` in v4.0, and with it, the `ExpandoObject`.
+This is an object that can be treated like our Python `MyClass` objects above:
+it's an empty object that can have arbitrary properties assigned to and queried
+at runtime; it can even be treated like a dictionary, just like in Python:
 
 {% highlight csharp %}
 dynamic a = new ExpandoObject();
@@ -72,11 +79,12 @@ a.Field = "Hello";
 bool hasKey = ((IDictionary<string, object>) a).Any(kvp => kvp.Key == "Field"); // True
 {% endhighlight %}
 
-However, this requires you to use an `ExpandoObject`, which is sealed: you
-can't extend it to provide your own concrete functionality and then attach
-arbitrary runtime data to it. This is probably fine if you're building a
-dynamic data structure, but isn't so useful if you want to attach data to
-an existing class.
+The downside of `ExpandoObject` is that it is sealed: it's not possible to
+inherit from it to create a class that has some compile-time defined behaviour
+that can also have arbitrary data attached to it at run-time. This is fine if
+you're building a dynamic data structure (when parsing XML, for example), but
+isn't so useful if you want to attach data to an existing class, as you might
+when implementing something like WPF attached properties.
 
 One way to achieve this might be to use a static dictionary - here we can
 conceptually 'attach' an `ExpandoObject` to any other object to give it a set
@@ -131,11 +139,18 @@ class Program
 The problem with this approach, though, is that as soon as an object is added
 to a `Dictionary`, as either a key or a value, that `Dictionary` takes a
 strong reference to it, and so the object's lifetime is now tied to that of
-the `Dictionary` - and, in this case, as it is static, this will be for the
-rest of the runtime of the program. This obviously isn't ideal - and this
-is where `ConditionalWeakTable` comes in.
+the `Dictionary` - and, in this case, the lifetime of the `MyClass` we
+originally assigned to `b` is now determined by the lifetime of
+`DynamicProperties.PropertyDict`, unless we remember to manually remove it
+once we're finished with `b`.
 
-# ConditionalWeakTable
+This is obviously not ideal: if this was, say, a WPF control or dialog with an
+attached property, we would leak both the control or dialog and the attached
+dynamic object every time we used this pattern unless we also remember to
+manually remove it from the `Dictionary`. And this is where
+`ConditionalWeakTable` comes in.
+
+## ConditionalWeakTable
 
 `ConditionalWeakTable<TKey, TValue>` solves the problem of `Dictionary`
 highlighted above by _not_ holding a reference to the `TKey` objects; rather,
@@ -206,12 +221,12 @@ to dig into this further.
 
 ## Implications for profiling
 
-Because these `ConditionalWeakTable`s depend on support from the CLR, they
-also require special-case support from profiling tools. Without this support,
-objects kept alive only through `ConditionalWeakTable`s would show as having
-no path to the Garbage Collection root - for the example above, after `second`
-has been set to null, we would see the following in instance retention graph
-in ANTS Memory Profiler:
+Because `ConditionalWeakTable`s depend on support from the CLR, they also
+require special-case support from profiling tools. Without this support,
+objects kept alive only through `ConditionalWeakTable`s would show as having no
+path to the Garbage Collection root - for the example above, after `second` has
+been set to null, we would see the following in instance retention graph in
+ANTS Memory Profiler:
 
 ![No GC root for MyClass2]({{ site.url }}/assets/no_gc_root.png)
 
@@ -228,9 +243,17 @@ The dashed light-blue arrow from `MyClass` to `MyClass2` indicates that this
 reference is held in a `ConditionalWeakTable` rather than being a 'normal'
 strong reference.
 
-# Conclusion
+## Conclusion
 
-I guess I should put something here?
+`ConditionalWeakTable` lives in the `System.Runtime.CompilerServices`
+namespace, and the [MSDN documentation](https://msdn.microsoft.com/en-us/library/dd287757(v=vs.110).aspx)
+talks about it being useful to compiler writers implementing dynamic
+languages on the .NET runtime. However, as discussed above they are also useful
+in a number of other circumstances - and indeed are used in a number of places
+in the .NET Framework, including in WPF for attached properties and weak events
+(forgetting to detach events being another common source of memory leaks).
+Like `WeakReference`, they're not a panacaea for all memory problems in
+.NET but, used carefully and in specific circumstances, they can be a useful
+addition to a developer's toolkit.
 
 You can download a trial of ANTS Memory Profiler from the [RedGate website](http://www.red-gate.com/products/dotnet-development/ants-memory-profiler/).
-
